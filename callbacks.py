@@ -1,5 +1,5 @@
-import keras.backend as K
-from keras.callbacks import Callback, ModelCheckpoint
+import tensorflow.keras.backend as K
+from tensorflow.keras.callbacks import Callback, ModelCheckpoint
 import yaml
 import h5py
 import numpy as np
@@ -23,6 +23,9 @@ class Step(Callback):
                 self.change_lr(self.lr[i])
                 return
         self.change_lr(self.lr[i+1])
+
+    #def on_train_begin(self, logs={}):
+    #    pass
 
     def get_config(self):
         config = {'class': type(self).__name__,

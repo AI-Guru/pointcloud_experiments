@@ -1,12 +1,11 @@
-from keras.layers import Conv1D, MaxPooling1D, Flatten, Dropout, Input, BatchNormalization, Dense
-from keras.layers import Reshape, Lambda, concatenate
-from keras.models import Model
-from keras.engine.topology import Layer
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dropout, Input, BatchNormalization, Dense
+from tensorflow.keras.layers import Reshape, Lambda, concatenate
+from tensorflow.keras.models import Model
 import numpy as np
 import tensorflow as tf
 
 
-class MatMul(Layer):
+class MatMul(tf.keras.layers.Layer):
 
     def __init__(self, **kwargs):
         super(MatMul, self).__init__(**kwargs)
@@ -36,8 +35,8 @@ class MatMul(Layer):
         return tuple(output_shape)
 
 
-def PointNet(nb_classes):
-    input_points = Input(shape=(2048, 3))
+def create_pointnet(number_of_points, nb_classes):
+    input_points = Input(shape=(number_of_points, 3))
     # issues
     # input transformation net
     x = Conv1D(64, 1, activation='relu')(input_points)
@@ -46,7 +45,7 @@ def PointNet(nb_classes):
     x = BatchNormalization()(x)
     x = Conv1D(1024, 1, activation='relu')(x)
     x = BatchNormalization()(x)
-    x = MaxPooling1D(pool_size=2048)(x)
+    x = MaxPooling1D(pool_size=number_of_points)(x)
 
     x = Dense(512, activation='relu')(x)
     x = BatchNormalization()(x)
@@ -70,7 +69,7 @@ def PointNet(nb_classes):
     f = BatchNormalization()(f)
     f = Conv1D(1024, 1, activation='relu')(f)
     f = BatchNormalization()(f)
-    f = MaxPooling1D(pool_size=2048)(f)
+    f = MaxPooling1D(pool_size=number_of_points)(f)
     f = Dense(512, activation='relu')(f)
     f = BatchNormalization()(f)
     f = Dense(256, activation='relu')(f)
@@ -88,7 +87,7 @@ def PointNet(nb_classes):
     g = BatchNormalization()(g)
 
     # global feature
-    global_feature = MaxPooling1D(pool_size=2048)(g)
+    global_feature = MaxPooling1D(pool_size=number_of_points)(g)
 
     # point_net_cls
     c = Dense(512, activation='relu')(global_feature)

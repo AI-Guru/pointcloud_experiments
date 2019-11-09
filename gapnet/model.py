@@ -1,10 +1,42 @@
 import tensorflow as tf
 from tensorflow.keras import models, layers
 from tensorflow.keras import backend as K
-from .layers import KNN, Transform
+from .layers import KNN, Transform, MultiGraphAttention, GraphAttention
 
 
-def build_model(
+def create_gapnet_dev(number_of_points, nb_classes):
+    features = 3
+    k = 20
+    heads = 4
+    features_out = 16
+
+    # Input for a pointcloud.
+    point_cloud = layers.Input(shape=(number_of_points, features))
+
+    # Create the Graph Attention.
+    multi_graph_attention = MultiGraphAttention(k=k, features=features_out, heads=heads)(point_cloud)
+
+    # For now: Flatten
+    attention_features = multi_graph_attention[0]
+    attention_features = layers.Flatten()(attention_features)
+
+    # For now: Flatten.
+    graph_features = multi_graph_attention[1]
+    graph_features = layers.Flatten()(graph_features)
+
+    # For now: Merge all.
+    merged = layers.Concatenate()([attention_features, graph_features])
+
+    output = merged
+
+    # Final layer. Classifier.
+    output = layers.Dense(nb_classes, activation="softmax")(output)
+
+    # Create the model.
+    model = models.Model(point_cloud, output)
+    return model
+
+def build_model_paper(
     number_of_points,
     features,
     k,
@@ -16,11 +48,21 @@ def build_model(
 
     # Create the input shape.
     point_cloud = layers.Input(shape=(number_of_points, 3), name="point_cloud_input")
+    print("point_cloud", point_cloud)
+
+    # Then apply spatial transformation.
+    point_cloud_transformed = TransformPaper(k=k)(point_cloud)
+    print("point_cloud_transformed", point_cloud_transformed)
+
+    return models.Model(point_cloud, point_cloud_transformed), None
+
+
 
     # Create attention on the input.
     print("Attention before transformation.")
-    multi_attention_features, all_graph_features = build_multi_head_attention(point_cloud, k, heads1, name="attention1")
+    multi_attention_features, all_graph_features = build_multi_head_attention(point_cloud, k, heads=4, features=features, name="attention1")
     print("")
+
 
     # TODO What is this? skip connection?! neighbors_features in original
     #point_cloud_expanded = layers.Reshape((K.int_shape(point_cloud)[1], 1, K.int_shape(point_cloud)[2]))(point_cloud)
@@ -66,7 +108,7 @@ def build_model(
     return prediction_model, attention_model
 
 
-def build_multi_head_attention(point_cloud, k, heads, name):
+def build_multi_head_attention(point_cloud, k, heads, features, name):
 
     # Create KNN for input.
     knn = KNN(k=k, name=name + "_knn")(point_cloud)
@@ -77,7 +119,7 @@ def build_multi_head_attention(point_cloud, k, heads, name):
         attention_features, graph_features, attention_coefficients = build_attention(
             point_cloud,
             knn,
-            features=16,
+            features=features,
             name=name + "_head_{}".format(head_index)
         )
 

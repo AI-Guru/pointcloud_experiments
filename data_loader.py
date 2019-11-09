@@ -11,11 +11,15 @@ from keras.utils import np_utils
 
 
 class DataGenerator:
-    def __init__(self, file_name, batch_size, nb_classes=40, train=True):
+    def __init__(self, file_name, batch_size, number_of_points, nb_classes=40, train=True):
         self.fie_name = file_name
         self.batch_size = batch_size
+        self.number_of_points = number_of_points
         self.nb_classes = nb_classes
         self.train = train
+
+        if number_of_points not in [1024, 2048]:
+            raise Exception("Invalid number of points.")
 
     @staticmethod
     def rotate_point_cloud(data):
@@ -62,8 +66,16 @@ class DataGenerator:
                 X = []
                 Y = []
                 for j in batch_index:
+
+                    # Get input and output.
                     item = f['data'][j]
                     label = f['label'][j]
+
+                    # Downsample.
+                    if self.number_of_points == 1024:
+                        item = item[::2,:]
+
+                    # Data augmentation.
                     if self.train:
                         is_rotate = random.randint(0, 1)
                         is_jitter = random.randint(0, 1)
