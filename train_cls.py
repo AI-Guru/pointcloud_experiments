@@ -7,7 +7,7 @@ import os
 import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as plt
-
+import tensorflow as tf
 
 def plot_history(history, result_dir):
     plt.plot(history.history['acc'], marker='.')
@@ -69,12 +69,33 @@ def main():
     checkpoint = ModelCheckpoint('./results/pointnet.h5', monitor='val_acc',
                                  save_weights_only=True, save_best_only=True,
                                  verbose=1)
+    
+    # Create the callbacks.
+    callbacks = []
+    
+    # Logging training progress with tensorboard.
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+        log_dir="logs/pointnet", 
+        histogram_freq=0, 
+        batch_size=32, 
+        write_graph=True, 
+        write_grads=False, 
+        write_images=True, 
+        embeddings_freq=0, 
+        embeddings_layer_names=None, 
+        embeddings_metadata=None, 
+        embeddings_data=None, 
+        update_freq="epoch"
+    )
+    callbacks.append(tensorboard_callback)
+    
+    
     history = model.fit_generator(train.generator(),
                                   steps_per_epoch=9840 // batch_size,
                                   epochs=epochs,
                                   validation_data=val.generator(),
                                   validation_steps=2468 // batch_size,
-                                  callbacks=[checkpoint, onetenth_50_75(lr)],
+                                  callbacks=[checkpoint, onetenth_50_75(lr), tensorboard_callback],
                                   verbose=1)
 
     plot_history(history, './results/')
