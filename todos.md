@@ -1,4 +1,4 @@
-- [ ] write README, with references
+- [X] write README, with references
 - [ ] publish
 - [ ] make assertions for all those shapes
 - [ ] make assertions for second attention single and multi
@@ -16,6 +16,10 @@
 - [ ] what is this? https://github.com/TianzhongSong/PointNet-Keras/blob/master/callbacks.py Change of LR
 - [ ] make sure that trainable parameters are properly displayed in summary()
 - [ ] implement load/save
+- [ ] write detailed documentation
+- [ ] consider commenting on GAPNet implementation details, thoughts and findings
+- [ ]
+- [ ]
 - [ ]
 - [ ]
 
