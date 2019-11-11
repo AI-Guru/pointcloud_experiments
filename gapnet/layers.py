@@ -1,6 +1,8 @@
 import tensorflow as tf
+#assert tf.__version__.startswith("1.1"), "Expected tensorflow 1.1X, got {}".format(tf.__version__)
 import tensorflow.keras.backend as K
 from tensorflow.keras import models, layers
+
 
 class KNN(tf.keras.layers.Layer):
     """
@@ -70,11 +72,11 @@ class GraphAttention(tf.keras.layers.Layer):
 
         assert len(input_shapes) == 2
 
-        point_cloud_shape = input_shapes[0]
+        point_cloud_shape = input_shapes[0].as_list()
         self.number_of_points = point_cloud_shape[1]
         self.features_in = point_cloud_shape[-1]
 
-        knn_shape = input_shapes[1]
+        knn_shape = input_shapes[1].as_list()
         assert knn_shape[1] == point_cloud_shape[1]
         self.k = knn_shape[2]
 
