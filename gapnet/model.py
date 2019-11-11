@@ -14,7 +14,7 @@ def create_gapnet_dev(number_of_points, nb_classes):
     point_cloud = layers.Input(shape=(number_of_points, features))
 
     # Create the Graph Attention.
-    multi_graph_attention = MultiGraphAttention(k=k, features=features_out, heads=heads)(point_cloud)
+    multi_graph_attention = MultiGraphAttention(k=k, features_out=features_out, heads=heads)(point_cloud)
 
     # For now: Flatten
     attention_features = multi_graph_attention[0]

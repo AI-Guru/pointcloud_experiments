@@ -57,57 +57,128 @@ class GraphAttention(tf.keras.layers.Layer):
     and we use the same notation for the remainder.
     """
 
-    def __init__(self, k, features, bn_decay=None, **kwargs):
+    def __init__(self, features_out, bn_decay=None, **kwargs):
 
-        self.k = k
-        self.features = features
+        self.features_out = features_out
         #self.bn_decay + bn_decay
+
+        # Call super.
         super(GraphAttention, self).__init__(**kwargs)
 
 
-    def build(self, input_shape):
+    def build(self, input_shapes):
 
-        super(GraphAttention, self).build(input_shape)
+        assert len(input_shapes) == 2
+
+        point_cloud_shape = input_shapes[0]
+        self.number_of_points = point_cloud_shape[1]
+        self.features_in = point_cloud_shape[-1]
+
+        knn_shape = input_shapes[1]
+        assert knn_shape[1] == point_cloud_shape[1]
+        self.k = knn_shape[2]
+
+        # MLPs for self attention.
+        self.self_attention_mlp1 = layers.Dense(
+            self.features_out,
+            activation="relu",
+            name=self.name + "_self_attention_mlp1"
+            )
+        self.self_attention_mlp2 = layers.Dense(
+            1,
+            activation="relu",
+            name=self.name + "_self_attention_mlp2"
+            )
+
+        # MLPs for neighbor attention.
+        self.neighbor_attention_mlp1 = layers.Dense(
+            self.features_out,
+            activation="relu",
+            name=self.name + "_neighbor_attention_mlp1"
+            )
+        self.neighbor_attention_mlp2 = layers.Dense(
+            1,
+            activation="relu",
+            name=self.name + "_neighbor_attention_mlp2"
+            )
+
+        # Final bias.
+        self.output_bias = self.add_variable(
+            "kernel",
+            shape=[self.number_of_points, 1, self.features_out])
+
+        # Call super.
+        super(GraphAttention, self).build(input_shapes)
 
 
-    def call(self, input):
+    def call(self, inputs):
 
-        point_cloud = input[0]
-        knn = input[1]
+        # The first part of the input is the pointcloud.
+        point_cloud = inputs[0]
+        assert_shape_is(point_cloud, (1024, 3))
 
-        # Pointcloud stream.
-        pc_mlp1 = layers.Dense(self.features, activation="relu", name=self.name + "_pc_mlp1")(point_cloud)
-        pc_mlp2 = layers.Dense(1, activation="relu", name=self.name + "_pc_mlp2")(pc_mlp1)
+        # The second part of the input are the KNNs.
+        knn = inputs[1]
+        assert_shape_is(knn, (1024, 20, 3))
 
-        # KNN stream.
-        knn_mlp1 = layers.Dense(self.features, activation="relu", name=self.name + "_graph_features")(knn)
-        graph_features = knn_mlp1
-        knn_mlp2 = layers.Dense(1, activation="relu", name=self.name + "_knn_mlp2")(knn_mlp1)
+        # Reshape the pointcloud if necessary.
+        if len(point_cloud.shape) == 4:
+            pass
+        elif len(point_cloud.shape) == 3:
+            point_cloud = K.expand_dims(point_cloud, axis=2)
+        else:
+            raise Exception("Invalid shape!")
+        assert_shape_is(point_cloud, (1024, 1, 3))
 
-        # Compute attention coefficients.
-        # Add point_cloud_mlp2 and point_cloud_mlp2 and apply softmax.
-        attention_coefficients = layers.Lambda(lambda x: tf.add(
-            tf.expand_dims(x[0], axis=-1),
-            x[1]
-        ), name=self.name + "_add")([pc_mlp2, knn_mlp2])
-        attention_coefficients = layers.Permute([1, 3, 2])(attention_coefficients)
-        attention_coefficients = layers.LeakyReLU()(attention_coefficients)
-        attention_coefficients = layers.Activation("softmax", name=self.name + "_attention_coefficients")(attention_coefficients)
-        #print(attention_coefficients)
-        #attention_coefficients_shape = (K.int_shape(point_cloud)[1], self.k,)
-        #print(attention_coefficients_shape)
-        #attention_coefficients = layers.Reshape(attention_coefficients_shape)(attention_coefficients)
-        #print(attention_coefficients)
-        # Compute attention features.
-        # Matmul graph-features and attention coeeficients. Apply squeeze.
-        attention_features = layers.Lambda(
-            lambda x: tf.matmul(x[1], x[0])
-        )([graph_features, attention_coefficients])
-        attention_features = layers.Lambda(
-            lambda x: K.squeeze(x, axis=2),
-            name=self.name + "_attention_features"
-        )(attention_features)
+        # Tile the pointcloud to make it compatible with KNN.
+        point_cloud_tiled = K.tile(point_cloud, [1, 1, self.k, 1])
+        assert_shape_is(point_cloud_tiled, (1024, 20, 3))
 
+        # Compute difference between tiled pointcloud and knn.
+        point_cloud_knn_difference = point_cloud_tiled - knn
+        assert_shape_is(point_cloud_knn_difference, (1024, 20, 3))
+
+        # MLPs for self attention.
+        self_attention = self.self_attention_mlp1(point_cloud)
+        assert_shape_is(self_attention, (1024, 1, 16))
+        self_attention = self.self_attention_mlp2(self_attention)
+        assert_shape_is(self_attention, (1024, 1, 1))
+
+        # MLPs for neighbor attention.
+        neighbor_attention = self.neighbor_attention_mlp1(point_cloud_knn_difference)
+        assert_shape_is(neighbor_attention, (1024, 20, 16))
+        graph_features = neighbor_attention
+        neighbor_attention = self.neighbor_attention_mlp2(neighbor_attention)
+        assert_shape_is(neighbor_attention, (1024, 20, 1))
+
+        # Merge self attention and neighbor attention to get attention coefficients.
+        logits = self_attention + neighbor_attention
+        assert_shape_is(logits, (1024, 20, 1))
+        logits = K.permute_dimensions(logits, (0, 1, 3, 2))
+        assert_shape_is(logits, (1024, 1, 20))
+
+        # Apply leaky relu and softmax to logits to get attention coefficents.
+        logits = K.relu(logits, alpha=0.2)
+        attention_coefficients = K.softmax(logits)
+        assert_shape_is(attention_coefficients, (1024, 1, 20))
+
+        # Compute attention features from attention coefficients and graph features.
+        attention_features = tf.matmul(attention_coefficients, graph_features)
+        assert_shape_is(attention_features, (1024, 1, 16))
+
+        # Add bias.
+        attention_features = tf.add(attention_features, self.output_bias)
+        assert_shape_is(attention_features, (1024, 1, 16))
+
+        # Apply output activation.
+        attention_features = K.relu(attention_features)
+        assert_shape_is(attention_features, (1024, 1, 16))
+
+        # Reshape graph features.
+        graph_features = K.expand_dims(graph_features, axis=2)
+        assert_shape_is(graph_features, (1024, 1, 20, 16))
+
+        # Done.
         return attention_features, graph_features, attention_coefficients
 
 
@@ -116,13 +187,22 @@ class MultiGraphAttention(tf.keras.layers.Layer):
     The GAPLayer with M heads, as shown in 2(a) , takes N points with F dimensions as input and concatenates attention feature and graph feature respectively from all heads to generate multi-attention features and multi-graph features as output.
     """
 
-    def __init__(self, k, features, heads, bn_decay=None, **kwargs):
+    def __init__(self, k, features_out, heads, bn_decay=None, **kwargs):
 
         self.k = k
-        self.features = features
+        self.features_out = features_out
         self.heads = heads
         #self.bn_decay + bn_decay
+
+        # Call super.
         super(MultiGraphAttention, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+
+        self.graph_attentions = [GraphAttention(features_out=self.features_out) for _ in range(self.heads)]
+
+        # Call super.
+        super(MultiGraphAttention, self).build(input_shape)
 
 
     def call(self, input):
@@ -138,7 +218,7 @@ class MultiGraphAttention(tf.keras.layers.Layer):
         graph_features_list = []
         attention_coefficients_list = []
         for head_index in range(self.heads):
-            graph_attention = GraphAttention(k=self.k, features=self.features)([point_cloud, knn])
+            graph_attention = self.graph_attentions[head_index]([point_cloud, knn])
             attention_features = graph_attention[0]
             graph_features = graph_attention[1]
             attention_coefficients = graph_attention[2]
@@ -147,36 +227,21 @@ class MultiGraphAttention(tf.keras.layers.Layer):
             graph_features_list.append(graph_features)
             attention_coefficients_list.append(attention_coefficients)
 
-        # Create all attention features. Includes skip connection to input.
+        # Only one head. Return first element of lists.
         if self.heads == 1:
-            multi_attention_features_shape = (
-                K.int_shape(attention_features_list[0])[1],
-                1,
-                K.int_shape(attention_features_list[0])[2]
-            )
-            multi_attention_features = layers.Reshape(multi_attention_features_shape, name=self.name + "_multi_attention_features")(attention_features_list[0])
-        else:
-            multi_attention_features = layers.Lambda(lambda x: K.stack(x, axis=2), name=self.name + "_multi_attention_features")(attention_features_list)
-
-        # Create all graph features.
-        if self.heads == 1:
-            multi_graph_features_shape = (
-                K.int_shape(graph_features_list[0])[1],
-                1,
-                K.int_shape(graph_features_list[0])[2],
-                K.int_shape(graph_features_list[0])[3]
-            )
-            multi_graph_features = layers.Reshape(multi_graph_features_shape, name=self.name + "_multi_graph_features")(graph_features_list[0])
-        else:
-            multi_graph_features = layers.Lambda(lambda x: K.stack(x, axis=2), name=self.name + "_multi_graph_features")(graph_features_list)
-
-        # Create all graph features.
-        if self.heads == 1:
+            multi_attention_features = attention_features_list[0]
+            multi_graph_features = graph_features_list[0]
             multi_attention_coefficients = attention_coefficients_list[0]
-        else:
-            multi_attention_coefficients = layers.concatenate(attention_coefficients_list, name=self.name + "_multi_graph_features", axis=2)
 
+        # More than one head. Stack.
+        else:
+            multi_attention_features = K.concatenate(attention_features_list, axis=2)
+            multi_graph_features = K.concatenate(graph_features_list, axis=2)
+            multi_attention_coefficients = K.concatenate(attention_coefficients_list, axis=2)
+
+        # Done.
         return multi_attention_features, multi_graph_features, multi_attention_coefficients
+
 
 
 class Transform(tf.keras.layers.Layer):
@@ -302,3 +367,11 @@ class Transform(tf.keras.layers.Layer):
 
         print(point_cloud.shape, knn.shape)
         return knn, knn, knn
+
+
+def assert_shape_is(tensor, expected_shape):
+    assert isinstance(tensor, tf.Tensor), type(tensor)
+    assert isinstance(expected_shape, list) or isinstance(expected_shape, tuple), type(expected_shape)
+    tensor_shape = tensor.shape[1:]
+    if tensor_shape != expected_shape:
+        raise Exception("{} is not equal {}".format(tensor_shape, expected_shape))

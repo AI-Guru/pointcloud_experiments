@@ -56,21 +56,20 @@ class TestMethods(unittest.TestCase):
         knn = KNN(k=k, name="test_knn")(point_cloud)
 
         # Create the Graph Attention from point-cloud and KNN.
-        graph_attention = GraphAttention(k=k, features=features_out)([point_cloud, knn])
+        graph_attention = GraphAttention(features_out)([point_cloud, knn])
 
         # Create the model.
         model = models.Model(point_cloud, graph_attention)
+        model.summary()
 
         # Check if output is right. The first is attention feature.
-        self.assertEqual(model.outputs[0].shape[1:], (number_of_points, features_out))
+        self.assertEqual(model.outputs[0].shape[1:], (number_of_points, 1, features_out))
 
         # Check if output is right. The second is graph feature.
-        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, k, features_out))
+        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, 1, k, features_out))
 
         # Check if output is right. The second is attention coefficients.
         self.assertEqual(model.outputs[2].shape[1:], (number_of_points, 1, k))
-
-        # TODO Consider checking the KNN condition.
 
         # Do a prediction.
         input = np.array([(x , x, x) for x in range(number_of_points)])
@@ -87,17 +86,17 @@ class TestMethods(unittest.TestCase):
         Tests the multi head graph attention layer with one head.
         """
 
-        number_of_points = 2048
-        features = 3
+        number_of_points = 1024
+        features_in = 3
         k = 20
         heads = 1
         features_out = 16
 
         # Input for a pointcloud.
-        point_cloud = layers.Input(shape=(number_of_points, features))
+        point_cloud = layers.Input(shape=(number_of_points, features_in))
 
         # Create the Graph Attention from point-cloud and KNN.
-        multi_graph_attention = MultiGraphAttention(k=k, features=features_out, heads=heads)(point_cloud)
+        multi_graph_attention = MultiGraphAttention(k=k, features_out=features_out, heads=heads)(point_cloud)
 
         # Create the model.
         model = models.Model(point_cloud, multi_graph_attention)
@@ -119,16 +118,16 @@ class TestMethods(unittest.TestCase):
         """
 
         number_of_points = 1024
-        features = 3
+        features_in = 3
         k = 20
         heads = 4
         features_out = 16
 
         # Input for a pointcloud.
-        point_cloud = layers.Input(shape=(number_of_points, features))
+        point_cloud = layers.Input(shape=(number_of_points, features_in))
 
         # Create the Graph Attention from point-cloud and KNN.
-        multi_graph_attention = MultiGraphAttention(k=k, features=features_out, heads=heads)(point_cloud)
+        multi_graph_attention = MultiGraphAttention(k=k, features_out=features_out, heads=heads)(point_cloud)
 
         # Create the model.
         model = models.Model(point_cloud, multi_graph_attention)
