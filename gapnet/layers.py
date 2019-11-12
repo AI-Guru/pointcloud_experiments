@@ -59,10 +59,10 @@ class GraphAttention(tf.keras.layers.Layer):
     and we use the same notation for the remainder.
     """
 
-    def __init__(self, features_out, bn_decay=None, **kwargs):
+    def __init__(self, features_out, batch_normalization=True, **kwargs):
 
         self.features_out = features_out
-        #self.bn_decay + bn_decay
+        self.batch_normalization = batch_normalization=True
 
         # Call super.
         super(GraphAttention, self).__init__(**kwargs)
@@ -80,33 +80,41 @@ class GraphAttention(tf.keras.layers.Layer):
         assert knn_shape[1] == point_cloud_shape[1]
         self.k = knn_shape[2]
 
-        # MLPs for self attention.
+        # MLP 1 for self attention.
         self.self_attention_mlp1 = layers.Dense(
             self.features_out,
             activation="relu",
             name=self.name + "_self_attention_mlp1"
             )
-        self.self_attention_bn1 = layers.BatchNormalization()
+        if self.batch_normalization == True:
+            self.self_attention_bn1 = layers.BatchNormalization()
+
+        # MLP 2 for self attention.
         self.self_attention_mlp2 = layers.Dense(
             1,
             activation="relu",
             name=self.name + "_self_attention_mlp2"
             )
-        self.self_attention_bn2 = layers.BatchNormalization()
+        if self.batch_normalization == True:
+            self.self_attention_bn2 = layers.BatchNormalization()
 
-        # MLPs for neighbor attention.
+        # MLP 1 for neighbor attention.
         self.neighbor_attention_mlp1 = layers.Dense(
             self.features_out,
             activation="relu",
             name=self.name + "_neighbor_attention_mlp1"
             )
-        self.neighbor_attention_bn1 = layers.BatchNormalization()
+        if self.batch_normalization == True:
+            self.neighbor_attention_bn1 = layers.BatchNormalization()
+
+        # MLP 2 for neighbor attention.
         self.neighbor_attention_mlp2 = layers.Dense(
             1,
             activation="relu",
             name=self.name + "_neighbor_attention_mlp2"
             )
-        self.neighbor_attention_bn2 = layers.BatchNormalization()
+        if self.batch_normalization == True:
+            self.neighbor_attention_bn2 = layers.BatchNormalization()
 
         # Final bias.
         self.output_bias = self.add_variable(
@@ -144,21 +152,31 @@ class GraphAttention(tf.keras.layers.Layer):
         point_cloud_knn_difference = point_cloud_tiled - knn
         assert_shape_is(point_cloud_knn_difference, (1024, 20, 3))
 
-        # MLPs for self attention including batch normalization.
+        # MLP 1 for self attention including batch normalization.
         self_attention = self.self_attention_mlp1(point_cloud)
-        self_attention = self.self_attention_bn1(self_attention)
+        if self.batch_normalization == True:
+            self_attention = self.self_attention_bn1(self_attention)
         assert_shape_is(self_attention, (1024, 1, 16))
+
+        # MLP 2 for self attention including batch normalization.
         self_attention = self.self_attention_mlp2(self_attention)
-        self_attention = self.self_attention_bn2(self_attention)
+        if self.batch_normalization == True:
+            self_attention = self.self_attention_bn2(self_attention)
         assert_shape_is(self_attention, (1024, 1, 1))
 
-        # MLPs for neighbor attention including batch normalization.
+        # MLP 1 for neighbor attention including batch normalization.
         neighbor_attention = self.neighbor_attention_mlp1(point_cloud_knn_difference)
-        neighbor_attention = self.neighbor_attention_bn1(neighbor_attention)
+        if self.batch_normalization == True:
+            neighbor_attention = self.neighbor_attention_bn1(neighbor_attention)
         assert_shape_is(neighbor_attention, (1024, 20, 16))
+
+        # Graph features are the ouput of the first MLP.
         graph_features = neighbor_attention
+
+        # MLP 2 for neighbor attention including batch normalization.
         neighbor_attention = self.neighbor_attention_mlp2(neighbor_attention)
-        neighbor_attention = self.neighbor_attention_bn2(neighbor_attention)
+        if self.batch_normalization == True:
+            neighbor_attention = self.neighbor_attention_bn2(neighbor_attention)
         assert_shape_is(neighbor_attention, (1024, 20, 1))
 
         # Merge self attention and neighbor attention to get attention coefficients.
@@ -197,19 +215,21 @@ class MultiGraphAttention(tf.keras.layers.Layer):
     The GAPLayer with M heads, as shown in 2(a) , takes N points with F dimensions as input and concatenates attention feature and graph feature respectively from all heads to generate multi-attention features and multi-graph features as output.
     """
 
-    def __init__(self, k, features_out, heads, bn_decay=None, **kwargs):
+    def __init__(self, k, features_out, heads, batch_normalization=True, **kwargs):
 
         self.k = k
         self.features_out = features_out
         self.heads = heads
+        self.batch_normalization = batch_normalization
         #self.bn_decay + bn_decay
 
         # Call super.
         super(MultiGraphAttention, self).__init__(**kwargs)
 
+
     def build(self, input_shape):
 
-        self.graph_attentions = [GraphAttention(features_out=self.features_out) for _ in range(self.heads)]
+        self.graph_attentions = [GraphAttention(features_out=self.features_out, batch_normalization=self.batch_normalization) for _ in range(self.heads)]
 
         # Call super.
         super(MultiGraphAttention, self).build(input_shape)
