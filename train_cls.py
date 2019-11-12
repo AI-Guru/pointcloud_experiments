@@ -10,18 +10,22 @@ import matplotlib.pyplot as plt
 import sys
 from model_cls import create_pointnet
 from gapnet.model import create_gapnet_dev
+import shutil
 
 model_names = ["pointnet", "gapnet_dev"]
+
+model_name = "gapnet_dev"
+training_name = "03"
 
 
 def main():
 
     # Check command line arguments.
-    if len(sys.argv) != 2 or sys.argv[1] not in model_names:
-        print("Must provide name of model.")
-        print("Options: " + " ".join(model_names))
-        exit(0)
-    model_name = sys.argv[1]
+    #if len(sys.argv) != 2 or sys.argv[1] not in model_names:
+    #    print("Must provide name of model.")
+    #    print("Options: " + " ".join(model_names))
+    #    exit(0)
+    #model_name = sys.argv[1]
 
     # Data preparation.
     nb_classes = 40
@@ -45,28 +49,39 @@ def main():
     model.summary()
 
     # Ensure output paths.
-    if not os.path.exists('./results/'):
-        os.mkdir('./results/')
-    if not os.path.exists('./results/{}'.format(model_name)):
-        os.mkdir('./results/{}'.format(model_name))
+    output_path = "logs"
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    output_path = os.path.join(output_path, model_name)
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    output_path = os.path.join(output_path, training_name)
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    os.mkdir(output_path)
 
 
     # Compile the model.
     lr = 0.0001
     adam = Adam(lr=lr)
-    model.compile(optimizer=adam,
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
-    checkpoint = ModelCheckpoint('./results/{}/model.h5'.format(model_name), monitor='val_acc',
-                                 save_weights_only=True, save_best_only=True,
-                                 verbose=1)
+    model.compile(
+        optimizer=adam,
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+        )
 
-    # Create the callbacks.
-    callbacks = []
+    # Checkpoint callback.
+    checkpoint = ModelCheckpoint(
+        os.path.join(output_path, "model.h5"),
+        monitor="val_acc",
+        save_weights_only=True,
+        save_best_only=True,
+        verbose=1
+        )
 
     # Logging training progress with tensorboard.
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir="logs/{}".format(model_name),
+        log_dir=output_path,
         histogram_freq=0,
         batch_size=32,
         write_graph=True,
@@ -78,25 +93,34 @@ def main():
         embeddings_data=None,
         update_freq="epoch"
     )
-    callbacks.append(tensorboard_callback)
 
     # Train the model.
-    history = model.fit_generator(train.generator(),
-                                  steps_per_epoch=9840 // batch_size,
-                                  epochs=epochs,
-                                  validation_data=val.generator(),
-                                  validation_steps=2468 // batch_size,
-                                  callbacks=[checkpoint, onetenth_50_75(lr), tensorboard_callback],
-                                  verbose=1)
+    history = model.fit_generator(
+        train.generator(),
+        #steps_per_epoch=9840 // batch_size,
+        steps_per_epoch=1,
+        #epochs=epochs,
+        epochs=2,
+        validation_data=val.generator(),
+        #validation_steps=2468 // batch_size,
+        validation_steps=2,
+        callbacks=[checkpoint, onetenth_50_75(lr), tensorboard_callback],
+        verbose=1
+        )
 
-    plot_history(history, './results/{}'.format(model_name))
-    save_history(history, './results/{}'.format(model_name))
-    model.save_weights('./results/{}/model_weights.h5'.format(model_name))
+    # Save history and model.
+    plot_history(history, output_path)
+    save_history(history, output_path)
+    model.save_weights(os.path.join(output_path, "model_weights.h5"))
 
 
 def plot_history(history, result_dir):
-    plt.plot(history.history['acc'], marker='.')
-    plt.plot(history.history['val_acc'], marker='.')
+    if "acc" in history.history:
+        plt.plot(history.history['acc'], marker='.')
+        plt.plot(history.history['val_acc'], marker='.')
+    elif "accuracy" in history.history:
+        plt.plot(history.history['accuracy'], marker='.')
+        plt.plot(history.history['val_accuracy'], marker='.')
     plt.title('model accuracy')
     plt.xlabel('epoch')
     plt.ylabel('accuracy')
@@ -117,10 +141,14 @@ def plot_history(history, result_dir):
 
 
 def save_history(history, result_dir):
+    if "acc" in history.history:
+        acc = history.history['acc']
+        val_acc = history.history['val_acc']
+    elif "accuracy" in history.history:
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
     loss = history.history['loss']
-    acc = history.history['acc']
     val_loss = history.history['val_loss']
-    val_acc = history.history['val_acc']
     nb_epoch = len(acc)
 
     with open(os.path.join(result_dir, 'result.txt'), 'w') as fp:

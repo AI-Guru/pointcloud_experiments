@@ -1,7 +1,8 @@
-- [ ] add prefix to training
+- [X] add prefix to training
 - [ ] visualize attention
-- [ ] add batch normalization to GAP layer
-- [ ] what about batch normalization?
+- [X] add batch normalization to GAP layer
+- [ ] make batch normalization deactivatable
+- [ ] what would batch normalization do in our case?
 - [ ] draw picture of multihead attention layer
 - [ ] draw picture of transform layer
 - [ ] make transform layer
