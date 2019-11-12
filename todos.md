@@ -1,10 +1,11 @@
 - [X] add prefix to training
 - [ ] visualize attention
 - [X] add batch normalization to GAP layer
-- [ ] make batch normalization deactivatable
+- [X] make batch normalization deactivatable
 - [ ] what would batch normalization do in our case?
-- [ ] draw picture of multihead attention layer
 - [ ] draw picture of transform layer
+- [ ] draw picture of GAPNet
+- [ ] draw picture of multihead attention layer
 - [ ] make transform layer
 - [ ] let model yield transformation output
 - [ ] see if their CNN stuff is good or bad
