@@ -1,17 +1,13 @@
-- [X] write README, with references
-- [ ] publish
-- [ ] make assertions for all those shapes
-- [ ] make assertions for second attention single and multi
-- [ ] make attention a model
-- [ ] make multihead attention a model
+- [ ] add prefix to training
+- [ ] visualize attention
+- [ ] add batch normalization to GAP layer
+- [ ] what about batch normalization?
+- [ ] draw picture of multihead attention layer
+- [ ] draw picture of transform layer
 - [ ] make transform layer
-- [ ] consider squeezing attention coefficients in GAP
 - [ ] let model yield transformation output
 - [ ] see if their CNN stuff is good or bad
-- [ ] what about batch normalization?
 - [ ] what about the (undocumented) skip connection point_cloud_expanded?
-- [ ] what is tf.tile(input_feature, [1, 1, k, 1]) in gat_layers?
-- [ ] use this for training https://github.com/TianzhongSong/PointNet-Keras
 - [ ] https://www.tensorflow.org/guide/upgrade
 - [ ] what is this? https://github.com/TianzhongSong/PointNet-Keras/blob/master/callbacks.py Change of LR
 - [ ] make sure that trainable parameters are properly displayed in summary()
@@ -23,6 +19,15 @@
 - [ ]
 - [ ]
 
+
+
+- [X] write README, with references
+- [X] publish
+- [X] make assertions for all those shapes
+- [X] make assertions for second attention single and multi
+- [X] consider squeezing attention coefficients in GAP
+- [X] what is tf.tile(input_feature, [1, 1, k, 1]) in gat_layers?
+- [X] use this for training https://github.com/TianzhongSong/PointNet-Keras
 - [X] make build model work
 - [X] get attentions out of multihead attention
 - [X] use 1024 instead of 2048 as number_of_points

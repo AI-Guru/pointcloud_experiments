@@ -86,11 +86,13 @@ class GraphAttention(tf.keras.layers.Layer):
             activation="relu",
             name=self.name + "_self_attention_mlp1"
             )
+        self.self_attention_bn1 = layers.BatchNormalization()
         self.self_attention_mlp2 = layers.Dense(
             1,
             activation="relu",
             name=self.name + "_self_attention_mlp2"
             )
+        self.self_attention_bn2 = layers.BatchNormalization()
 
         # MLPs for neighbor attention.
         self.neighbor_attention_mlp1 = layers.Dense(
@@ -98,11 +100,13 @@ class GraphAttention(tf.keras.layers.Layer):
             activation="relu",
             name=self.name + "_neighbor_attention_mlp1"
             )
+        self.neighbor_attention_bn1 = layers.BatchNormalization()
         self.neighbor_attention_mlp2 = layers.Dense(
             1,
             activation="relu",
             name=self.name + "_neighbor_attention_mlp2"
             )
+        self.neighbor_attention_bn2 = layers.BatchNormalization()
 
         # Final bias.
         self.output_bias = self.add_variable(
@@ -140,17 +144,21 @@ class GraphAttention(tf.keras.layers.Layer):
         point_cloud_knn_difference = point_cloud_tiled - knn
         assert_shape_is(point_cloud_knn_difference, (1024, 20, 3))
 
-        # MLPs for self attention.
+        # MLPs for self attention including batch normalization.
         self_attention = self.self_attention_mlp1(point_cloud)
+        self_attention = self.self_attention_bn1(self_attention)
         assert_shape_is(self_attention, (1024, 1, 16))
         self_attention = self.self_attention_mlp2(self_attention)
+        self_attention = self.self_attention_bn2(self_attention)
         assert_shape_is(self_attention, (1024, 1, 1))
 
-        # MLPs for neighbor attention.
+        # MLPs for neighbor attention including batch normalization.
         neighbor_attention = self.neighbor_attention_mlp1(point_cloud_knn_difference)
+        neighbor_attention = self.neighbor_attention_bn1(neighbor_attention)
         assert_shape_is(neighbor_attention, (1024, 20, 16))
         graph_features = neighbor_attention
         neighbor_attention = self.neighbor_attention_mlp2(neighbor_attention)
+        neighbor_attention = self.neighbor_attention_bn2(neighbor_attention)
         assert_shape_is(neighbor_attention, (1024, 20, 1))
 
         # Merge self attention and neighbor attention to get attention coefficients.
