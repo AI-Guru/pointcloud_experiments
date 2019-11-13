@@ -2,9 +2,10 @@
 - [ ] visualize attention
 - [X] add batch normalization to GAP layer
 - [X] make batch normalization deactivatable
+- [ ] replace Dense with CNN
 - [ ] what would batch normalization do in our case?
-- [ ] draw picture of transform layer
-- [ ] draw picture of GAPNet
+- [X] draw picture of transform layer
+- [X] draw picture of GAPNet
 - [ ] draw picture of multihead attention layer
 - [ ] make transform layer
 - [ ] let model yield transformation output
