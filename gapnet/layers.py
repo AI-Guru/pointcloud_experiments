@@ -271,7 +271,9 @@ class MultiGraphAttention(tf.keras.layers.Layer):
         # Done.
         return multi_attention_features, multi_graph_features, multi_attention_coefficients
 
-
+    def compute_output_shape(self, input_shape):
+        assert False
+        return (input_shape[0], 1024, 1, 16 * self.heads)
 
 class Transform(tf.keras.layers.Layer):
     """
@@ -409,3 +411,6 @@ class Transform(tf.keras.layers.Layer):
         point_cloud_transformed = tf.matmul(point_cloud, transform)
         assert_shape_is(point_cloud_transformed, (1024, 3))
         return point_cloud_transformed
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], 1024, 3)

@@ -11,7 +11,7 @@
 - [X] implement GAPNet
 - [ ] let model yield transformation output
 - [ ] see if their CNN stuff is good or bad
-- [ ] what about the (undocumented) skip connection point_cloud_expanded?
+- [X] what about the (undocumented) skip connection point_cloud_expanded?
 - [ ] https://www.tensorflow.org/guide/upgrade
 - [ ] what is this? https://github.com/TianzhongSong/PointNet-Keras/blob/master/callbacks.py Change of LR
 - [ ] make sure that trainable parameters are properly displayed in summary()
@@ -20,7 +20,7 @@
 - [ ] consider commenting on GAPNet implementation details, thoughts and findings
 - [ ] consider cleaning up asserts in layers and models
 - [X] what are the non_trainable parameters?
-- [ ] ensure that summary has all the output shapes... how?
+- [X] ensure that summary has all the output shapes... how?
 - [ ]
 - [ ]
 - [ ]

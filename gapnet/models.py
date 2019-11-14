@@ -15,16 +15,31 @@ class GAPNet(tf.keras.Model):
         self.k = k
         self.features_out = features_out
 
-        # Input for a pointcloud.
+        self.build_graph(input_shape=(None, number_of_points, features_in))
+
+
+    def build_graph(self, input_shape):
+        input_shape_nobatch = input_shape[1:]
+        self.build(input_shape)
+        inputs = tf.keras.Input(shape=input_shape_nobatch)
+
+        if not hasattr(self, 'call'):
+            raise AttributeError("User should define 'call' method in sub-class model!")
+
+        _ = self.call(inputs)
+
+    def build(self, input_shape, **kwargs):
+
+                # Input for a pointcloud.
 
         # Create attention layer with one head.
-        self.onehead_attention = MultiGraphAttention(k=k, features_out=features_out, heads=1)
+        self.onehead_attention = MultiGraphAttention(k=self.k, features_out=self.features_out, heads=1)
 
         # Create spatial transform layer.
         self.transform = Transform()
 
         # Create attention layer with four heads.
-        self.fourhead_attention = MultiGraphAttention(k=k, features_out=features_out, heads=4)
+        self.fourhead_attention = MultiGraphAttention(k=self.k, features_out=self.features_out, heads=4)
 
         # MLP 1 on attention features.
         self.mlp1 = layers.Dense(64, activation="linear")
@@ -65,12 +80,7 @@ class GAPNet(tf.keras.Model):
         # Dense 1.
         self.dense3 = layers.Dense(40, activation="softmax")
 
-        self.build(input_shape=(None, number_of_points, features_in))
-
-
-    #def build(self, input_shape, **kwargs):
-#
-#        super(GAPNet, self).build(input_shape)
+        super(GAPNet, self).build(input_shape)
 
 
     def call(self, inputs):
