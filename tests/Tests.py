@@ -105,7 +105,7 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(model.outputs[0].shape[1:], (number_of_points, heads, features_out))
 
         # Check if output is right. The second is graph feature.
-        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, heads, k, features_out))
+        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, k, features_out))
 
         # Check if output is right. The second is attention coefficients.
         self.assertEqual(model.outputs[2].shape[1:], (number_of_points, heads, k))
@@ -133,13 +133,13 @@ class TestMethods(unittest.TestCase):
         model = models.Model(point_cloud, multi_graph_attention)
 
         # Check if output is right. The first is attention feature.
-        self.assertEqual(model.outputs[0].shape[1:], (number_of_points, heads, features_out))
+        self.assertEqual(model.outputs[0].shape[1:], (number_of_points, 1, heads * features_out))
 
         # Check if output is right. The second is graph feature.
-        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, heads, k, features_out))
+        self.assertEqual(model.outputs[1].shape[1:], (number_of_points, k, features_out * heads))
 
         # Check if output is right. The second is attention coefficients.
-        self.assertEqual(model.outputs[2].shape[1:], (number_of_points, heads, k))
+        self.assertEqual(model.outputs[2].shape[1:], (number_of_points, 1, heads * k))
 
 
     #@unittest.skip
@@ -192,7 +192,7 @@ class TestMethods(unittest.TestCase):
 
 
     #@unittest.skip
-    def test_model(self):
+    def test_model2(self):
 
         print("ARCHITECTURE")
         number_of_points = 1024

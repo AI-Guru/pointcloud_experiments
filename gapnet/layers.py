@@ -192,19 +192,13 @@ class GraphAttention(tf.keras.layers.Layer):
 
         # Compute attention features from attention coefficients and graph features.
         attention_features = tf.matmul(attention_coefficients, graph_features)
-        assert_shape_is(attention_features, (1024, 1, 16))
-
-        # Add bias.
         attention_features = tf.add(attention_features, self.output_bias)
-        assert_shape_is(attention_features, (1024, 1, 16))
-
-        # Apply output activation.
         attention_features = K.relu(attention_features)
         assert_shape_is(attention_features, (1024, 1, 16))
 
         # Reshape graph features.
-        graph_features = K.expand_dims(graph_features, axis=2)
-        assert_shape_is(graph_features, (1024, 1, 20, 16))
+        #graph_features = K.expand_dims(graph_features, axis=2)
+        assert_shape_is(graph_features, (1024, 20, 16))
 
         # Done.
         return attention_features, graph_features, attention_coefficients
@@ -265,9 +259,13 @@ class MultiGraphAttention(tf.keras.layers.Layer):
 
         # More than one head. Stack.
         else:
-            multi_attention_features = K.concatenate(attention_features_list, axis=2)
-            multi_graph_features = K.concatenate(graph_features_list, axis=2)
-            multi_attention_coefficients = K.concatenate(attention_coefficients_list, axis=2)
+            multi_attention_features = K.concatenate(attention_features_list, axis=3)
+            multi_graph_features = K.concatenate(graph_features_list, axis=3)
+            multi_attention_coefficients = K.concatenate(attention_coefficients_list, axis=3)
+
+        assert_shape_is(multi_attention_features, (1024, 1, 16 * self.heads))
+        assert_shape_is(multi_graph_features, (1024, 20, 16 * self.heads))
+        assert_shape_is(multi_attention_coefficients, (1024, 1, 20 * self.heads))
 
         # Done.
         return multi_attention_features, multi_graph_features, multi_attention_coefficients

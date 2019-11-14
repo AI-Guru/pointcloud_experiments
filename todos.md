@@ -3,11 +3,13 @@
 - [X] add batch normalization to GAP layer
 - [X] make batch normalization deactivatable
 - [ ] replace Dense with CNN
+- [ ] in asserts: replace constants with variables
 - [ ] what would batch normalization do in our case?
 - [X] draw picture of transform layer
 - [X] draw picture of GAPNet
 - [ ] draw picture of multihead attention layer
-- [ ] make transform layer
+- [ ] implement transform layer
+- [ ] implement GAPNet
 - [ ] let model yield transformation output
 - [ ] see if their CNN stuff is good or bad
 - [ ] what about the (undocumented) skip connection point_cloud_expanded?
