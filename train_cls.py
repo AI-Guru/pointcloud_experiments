@@ -9,13 +9,14 @@ matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 import sys
 from model_cls import create_pointnet
-from gapnet.model import create_gapnet_dev
+from gapnet.models import GAPNet
 import shutil
 
-model_names = ["pointnet", "gapnet_dev"]
+if tf.__version__.startswith("2"):
+    tf.executing_eagerly()
 
-model_name = "gapnet_dev"
-training_name = "03"
+model_name = "gapnet"
+training_name = "04-first_full_network"
 
 
 def main():
@@ -44,8 +45,8 @@ def main():
     # Create the model.
     if model_name == "pointnet":
         model = create_pointnet(number_of_points, nb_classes)
-    elif model_name == "gapnet_dev":
-        model = create_gapnet_dev(number_of_points, nb_classes)
+    elif model_name == "gapnet":
+        model = GAPNet()
     model.summary()
 
     # Ensure output paths.
@@ -97,13 +98,10 @@ def main():
     # Train the model.
     history = model.fit_generator(
         train.generator(),
-        #steps_per_epoch=9840 // batch_size,
-        steps_per_epoch=1,
-        #epochs=epochs,
-        epochs=2,
+        steps_per_epoch=9840 // batch_size,
+        epochs=epochs,
         validation_data=val.generator(),
-        #validation_steps=2468 // batch_size,
-        validation_steps=2,
+        validation_steps=2468 // batch_size,
         callbacks=[checkpoint, onetenth_50_75(lr), tensorboard_callback],
         verbose=1
         )

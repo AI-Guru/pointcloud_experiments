@@ -7,9 +7,8 @@
 - [ ] what would batch normalization do in our case?
 - [X] draw picture of transform layer
 - [X] draw picture of GAPNet
-- [ ] draw picture of multihead attention layer
-- [ ] implement transform layer
-- [ ] implement GAPNet
+- [X] implement transform layer
+- [X] implement GAPNet
 - [ ] let model yield transformation output
 - [ ] see if their CNN stuff is good or bad
 - [ ] what about the (undocumented) skip connection point_cloud_expanded?
@@ -19,11 +18,13 @@
 - [ ] implement load/save
 - [ ] write detailed documentation
 - [ ] consider commenting on GAPNet implementation details, thoughts and findings
+- [ ] consider cleaning up asserts in layers and models
+- [X] what are the non_trainable parameters?
+- [ ] ensure that summary has all the output shapes... how?
 - [ ]
 - [ ]
 - [ ]
 - [ ]
-
 
 
 - [X] write README, with references

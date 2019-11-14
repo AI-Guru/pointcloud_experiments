@@ -2,7 +2,8 @@ import tensorflow as tf
 #assert tf.__version__.startswith("1.1"), "Expected tensorflow 1.1X, got {}".format(tf.__version__)
 import tensorflow.keras.backend as K
 from tensorflow.keras import models, layers
-
+from .utils import assert_shape_is
+import numpy as np
 
 class KNN(tf.keras.layers.Layer):
     """
@@ -229,10 +230,10 @@ class MultiGraphAttention(tf.keras.layers.Layer):
         super(MultiGraphAttention, self).build(input_shape)
 
 
-    def call(self, input):
+    def call(self, inputs):
 
         # Input for a pointcloud.
-        point_cloud = input
+        point_cloud = inputs
 
         # Create the KNN layer and apply it to the input.
         knn = KNN(k=self.k, name=self.name + "_knn")(point_cloud)
@@ -280,126 +281,131 @@ class Transform(tf.keras.layers.Layer):
     channels.
     """
 
-    def __init__(self, k, features, bn_decay=None, **kwargs):
+    def __init__(self, **kwargs):
+        super(Transform, self).__init__(**kwargs)
 
-        self.k = k
-        self.features = features
-
-        # Weights for the learned transformation matrix.
-        w_init = tf.zeros_initializer()
-        self.transform_w = tf.Variable(
-            initial_value=w_init(shape=(256, 3 * 3), dtype='float32'),
-            trainable=True
-        )
+        #w_init = tf.zeros_initializer()
+        #self.transform_w = tf.Variable(
+        #    initial_value=w_init(shape=(256, 3 * 3), dtype='float32'),
+        #    trainable=True
+        #)
 
         # Biases for the learned transformation matrix.
-        b_init = tf.zeros_initializer()
-        self.transform_b = tf.Variable(
-            initial_value=b_init(shape=(3 * 3,), dtype='float32'),
-            trainable=True
-        )
+        #b_init = tf.zeros_initializer()
+        #self.transform_b = tf.Variable(
+    #        initial_value=b_init(shape=(3 * 3,), dtype='float32'),
+    #        trainable=True
+    #    )
 
-        super(Transform, self).__init__(**kwargs)
 
 
     def build(self, input_shape):
-        #assert len(input_shape) == 2
-        #pointcloud, knn = input_shape
 
-        #self.dense_pc_1 = layers.Dense()
+        # Weights for the learned transformation matrix.
+        self.transform_w = self.add_variable("transform_w", shape=(256, 3 * 3))
+        self.transform_b = self.add_variable("transform_b", shape=(3 * 3,))
 
+        # MLP 1 on attention features.
+        self.mlp1 = layers.Dense(64, activation="linear")
+        self.mlp_bn1 = layers.BatchNormalization()
+        self.mlp_activation1 = layers.Activation("relu")
+
+        # MLP 2 on attention features.
+        self.mlp2 = layers.Dense(128, activation="linear")
+        self.mlp_bn2 = layers.BatchNormalization()
+        self.mlp_activation2 = layers.Activation("relu")
+
+        # MLP 3 on attention features.
+        self.mlp3 = layers.Dense(1024, activation="linear")
+        self.mlp_bn3 = layers.BatchNormalization()
+        self.mlp_activation3 = layers.Activation("relu")
+
+        # Pooling layer.
+        self.pooling = layers.MaxPooling2D((1024, 1))
+
+        # Flatten layer.
+        self.flatten = layers.Flatten()
+
+        # Dense 1 on attention features.
+        self.dense1 = layers.Dense(512, activation="linear")
+        self.bn1 = layers.BatchNormalization()
+        self.activation1 = layers.Activation("relu")
+
+        # Dense 2 on attention features.
+        self.dense2 = layers.Dense(256, activation="linear")
+        self.bn2 = layers.BatchNormalization()
+        self.activation2 = layers.Activation("relu")
 
         super(Transform, self).build(input_shape)
 
 
-    def call(self, input):
+    def call(self, inputs):
 
-        point_cloud = input
-        number_of_points = K.int_shape(point_cloud)[1]
-        print(point_cloud)
+        assert len(inputs) == 3
 
-        # Use a single-head Graph-Attention layer.
-        attention_features, graph_features, attention_coefficients = MultiGraphAttention(k=self.k, features=self.features, heads=1)(point_cloud)
+        # Inputs are point cloud, attention features and graph features.
+        point_cloud = inputs[0]
+        attention_features = inputs[1]
+        graph_features = inputs[2]
+        assert_shape_is(point_cloud, (1024, 3))
+        assert_shape_is(attention_features, (1024, 1, 19))
+        assert_shape_is(graph_features, (1024, 20, 16))
 
-        # TODO implementation has a skip connection... check this...
+        # MLP 1 on attention features.
+        net = self.mlp1(attention_features)
+        net = self.mlp_bn1(net)
+        net = self.mlp_activation1(net)
+        assert_shape_is(net, (1024, 1, 64))
 
-        # edge_feature in original is our attention_feature
-        #edge_feature = ???
-        # TODO max of graph features
-        #locals_max_transform = ???
-        attention_max_transform = layers.Lambda(lambda x: tf.reduce_max(x, axis=-2, keepdims=True))(graph_features)
+        # MLP 2 on attention features.
+        net = self.mlp2(net)
+        net = self.mlp_bn2(net)
+        net = self.mlp_activation2(net)
+        assert_shape_is(net, (1024, 1, 128))
 
-        # TODO BN decay?
-        # Dense on attention features.
-        net = layers.Dense(64, activation="linear")(attention_features)
-        net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
-
-        # Dense on attention features.
-        net = layers.Dense(128, activation="linear")(attention_features)
-        net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
+        # Maximum for graph features.
+        graph_features_max = tf.reduce_max(graph_features, axis=2, keepdims=True)
+        assert_shape_is(graph_features_max, (1024, 1, 16))
 
         # Concatenate with max.
-        net = layers.concatenate([net, attention_max_transform])
+        net = layers.concatenate([net, graph_features_max])
+        assert_shape_is(net, (1024, 1, 144))
 
-        # Dense on attention features.
-        net = layers.Dense(1024, activation="linear")(net)
-        net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
+        # MLP 3 on attention features.
+        net = self.mlp3(net)
+        net = self.mlp_bn3(net)
+        net = self.mlp_activation3(net)
+        assert_shape_is(net, (1024, 1, 1024))
 
-        # Apply max pooling.
-        # TODO: Consider using global pooling layer.
-        net = layers.MaxPooling2D((number_of_points, 1))(net)
+        # Pooling layer.
+        net = self.pooling(net)
+        assert_shape_is(net, (1, 1, 1024))
 
-        # Flatten.
-        net = layers.Flatten()(net)
+        # Flatten layer.
+        net = self.flatten(net)
+        assert_shape_is(net, (1024,))
 
-        # Fully connected.
-        net = layers.Dense(512, activation="linear")(net)
-        net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
+        # Dense 1.
+        net = self.dense1(net)
+        net = self.bn1(net)
+        net = self.activation1(net)
+        assert_shape_is(net, (512,))
 
-        # Fully connected.
-        net = layers.Dense(512, activation="linear")(net)
-        net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
+        # Dense 2.
+        net = self.dense2(net)
+        net = self.bn2(net)
+        net = self.activation2(net)
+        assert_shape_is(net, (256,))
 
         # Compute the transformation matrix.
-        # TODO Why do we do that?
-        self.transform_b += tf.constant(np.eye(K).flatten(), dtype=tf.float32)
         transform = tf.matmul(net, self.transform_w)
+        assert_shape_is(transform, (9,))
+        self.transform_b = self.transform_b + tf.constant(np.eye(3).flatten(), dtype=tf.float32)
         transform = tf.nn.bias_add(transform, self.transform_b)
+        assert_shape_is(transform, (9,))
+        transform = K.reshape(transform, (-1, 3, 3))
+        assert_shape_is(transform, (3, 3))
 
-        # Turn transform into a 3x3 matrix.
-        transform = layers.Reshape((3, 3))(transform)
-
-        print("transform", transform.shape, transform)
-        print("point_cloud", point_cloud.shape, point_cloud)
-
-        # Final transformation of the pointcloud.
-        result = layers.Lambda(lambda x: K.dot(x[0], x[1]))(point_cloud, transform)
-        return result
-
-
-        # TODO multiply
-        #point_cloud_transformed = layers.Lambda(lambda x: tf.matmul(x[0], x[1]))([point_cloud, transform])
-        #(32, 1024, 3)
-
-
-        print(type(input))
-        # Input must be point-cloud and knn.
-        assert isinstance(input, list)
-        assert len(input) == 2
-        point_cloud, knn = input
-
-        print(point_cloud.shape, knn.shape)
-        return knn, knn, knn
-
-
-def assert_shape_is(tensor, expected_shape):
-    assert isinstance(tensor, tf.Tensor), type(tensor)
-    assert isinstance(expected_shape, list) or isinstance(expected_shape, tuple), type(expected_shape)
-    tensor_shape = tensor.shape[1:]
-    if tensor_shape != expected_shape:
-        raise Exception("{} is not equal {}".format(tensor_shape, expected_shape))
+        point_cloud_transformed = tf.matmul(point_cloud, transform)
+        assert_shape_is(point_cloud_transformed, (1024, 3))
+        return point_cloud_transformed

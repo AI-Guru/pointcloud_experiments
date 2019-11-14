@@ -2,7 +2,7 @@ import unittest
 import sys
 sys.path.append("..")
 from gapnet.layers import KNN, GraphAttention, MultiGraphAttention, Transform
-from gapnet.model import build_model_paper
+from gapnet.models import GAPNet
 from tensorflow.keras import models, layers
 import numpy as np
 from tensorflow.keras.utils import plot_model
@@ -164,104 +164,15 @@ class TestMethods(unittest.TestCase):
 
 
     def test_model(self):
-        # Shapes should be the same as in GAPNet CLS.
-        point_cloud_input_shape = (1024, 3)
-        attention_features_input_shape = (1024, 19)
-        graph_features_input_shape = (1024, 20, 16)
-
-        # Create the input.
-        point_cloud_input = layers.Input(shape=point_cloud_input_shape)
-        attention_features_input = layers.Input(shape=attention_features_input_shape)
-        graph_features_input = layers.Input(shape=graph_features_input_shape)
-
-        # Create the output.
-        output = Transform(k=3)([point_cloud_input, attention_features_input, graph_features_input])
 
         # Create the model.
-        model = models.Model([point_cloud_input, attention_features_input, graph_features_input], output)
+        model = GAPNet()
         model.summary()
 
-        # Test.
-        number_of_samples = 3
-        point_cloud_sample = np.random.random((number_of_samples,) + point_cloud_input_shape)
-        attention_features_input = np.random.random((number_of_samples,) + attention_features_input_shape)
-        graph_features_input = np.random.random((number_of_samples,) + graph_features_input_shape)
-        preciction = model.predict([point_cloud_sample, attention_features_input, graph_features_input])
-        print(prediction.shape)
-        plt.imshow(prediction)
+        for x in model.non_trainable_weights:
+            if "normalization" not in str(x):
+                print(x)
 
-
-    #@unittest.skip
-    def test_model2(self):
-
-        print("ARCHITECTURE")
-        number_of_points = 1024
-        features = 3
-        nearest_neighbors = 20
-
-
-        prediction_model, attention_model = build_model_paper(
-            number_of_points,
-            features,
-            nearest_neighbors,
-            heads1=1,
-            heads2=4,
-            bn_decay=None,
-            output_size=1,
-            output_activation="linear"
-        )
-
-        prediction_model.summary()
-        plot_model(prediction_model, to_file='prediction_model.png')
-
-
-
-        # See that the input shape is a pointcloud with 1024 points and three numbers each.
-        self.assertEqual(prediction_model.get_layer("point_cloud_input").output_shape[0][1:], (1024, 3))
-
-        # In the beginning one attention is used with just one head.
-        self.assertEqual(prediction_model.get_layer("attention1_head_0_attention_features").output_shape[1:], (1024, 16))
-        self.assertEqual(prediction_model.get_layer("attention1_head_0_graph_features").output_shape[1:], (1024, 20, 16))
-
-        # The single head of the first attention goes big.
-        self.assertEqual(prediction_model.get_layer("attention1_multi_attention_features").output_shape[1:], (1024, 1, 16))
-        self.assertEqual(prediction_model.get_layer("attention1_multi_graph_features").output_shape[1:], (1024, 20, 1, 16))
-
-        # TODO what is right shape of attention1_multi_attention_features_with_skip?
-
-
-        # The first attention layer uses neighbors from KNN. Variable is called "neighbors" in original.
-        #self.assertEqual(prediction_model.get_layer("attention1_all_local_features").output_shape[1:], (1024, 1, 19))
-
-        #self.assertEqual(prediction_model.get_layer("attention1_all_global_features").output_shape[1:], (1024, 1, 1))
-
-        #print("PREDICT")
-        #input = np.random.random((number_of_points, 3))
-        #input = np.array([(x, x, x) for x in range(number_of_points)])
-        #print(input.shape)
-
-        #prediction = prediction_model.predict(np.expand_dims(input, axis=0))[0]
-        #print(prediction.shape)
-        #print(prediction)
-        #plt.imshow(prediction)
-        #plt.show()
-        #plt.close()
-
-
-
-    # def test_upper(self):
-    #     self.assertEqual('foo'.upper(), 'FOO')
-    #
-    # def test_isupper(self):
-    #     self.assertTrue('FOO'.isupper())
-    #     self.assertFalse('Foo'.isupper())
-    #
-    # def test_split(self):
-    #     s = 'hello world'
-    #     self.assertEqual(s.split(), ['hello', 'world'])
-    #     # check that s.split fails when the separator is not a string
-    #     with self.assertRaises(TypeError):
-    #         s.split(2)
 
 if __name__ == '__main__':
     unittest.main()
