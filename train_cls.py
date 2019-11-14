@@ -95,6 +95,11 @@ def main():
         update_freq="epoch"
     )
 
+    callbacks = []
+    #callbacks.append(checkpoint)
+    callbacks.append(onetenth_50_75(lr))
+    callbacks.append(tensorboard_callback)
+
     # Train the model.
     history = model.fit_generator(
         train.generator(),
@@ -102,7 +107,7 @@ def main():
         epochs=epochs,
         validation_data=val.generator(),
         validation_steps=2468 // batch_size,
-        callbacks=[checkpoint, onetenth_50_75(lr), tensorboard_callback],
+        callbacks=callbacks,
         verbose=1
         )
 
