@@ -30,11 +30,11 @@ Prepare data:
 
 Train PointNet:
 
-`python train_cls pointnet`
+`python train_cls.py pointnet`
 
 Train GAPNet draft:
 
-`python train_cls gapnet_dev`
+`python train_cls.py gapnet_dev`
 
 ## Notes.
 
