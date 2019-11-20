@@ -1,4 +1,23 @@
-# Pointcloud Experiments with ModelNet40. Includes PointNet and a draft of GAPNet
+# Pointcloud Experiments with ModelNet40. Includes PointNet and GAPNet
+
+The purpose of this repository is to provide a clean implementation of GAPNet. In order to facilitate comparability, it includes PointNet as a baseline. The goal is to come up with a readable implementation of GAPNet that outperforms PointNet.
+
+# Always star if you like.
+
+If you enjoy this repo, please give it a star. That would be very appreciated!
+
+# Getting in touch.
+
+If you got any bug reports or feature requests, please open an issue here on GitHub.
+
+- [Subscribe to my YouTube channel](https://www.youtube.com/channel/UCcMEBxcDM034JyJ8J3cggRg?view_as=subscriber).
+- [Become a patron](https://www.patreon.com/ai_guru).
+- [Subscribe to my newsletter](http://ai-guru.de/newsletter/).
+- [Visit by homepage/blog](http://ai-guru.de/).
+- [Join me on Slack](https://join.slack.com/t/ai-guru/shared_invite/enQtNDEzNjUwMTIwODM0LTdlOWQ1ZTUyZmQ5YTczOTUxYzk2YWI4ZmE0NTdmZGQxMmUxYmUwYmRhMDg1ZDU0NTUxMDI2OWVkOGFjYTViOGQ).
+- [Add me on LinkedIn](https://www.linkedin.com/in/dr-tristan-behrens-ai-guru-734967a2/).
+- [Add me on Facebook](https://www.facebook.com/AIGuruTristanBehrens).
+
 
 ## Acknowledgements.
 
@@ -9,14 +28,21 @@ Based heavily on:
 
 Those people did some really, really great work!
 
-## References.
+## Networks.
 
-- PointNet: [https://arxiv.org/abs/1612.00593](https://arxiv.org/abs/1612.00593)
-- GAPNet: [https://arxiv.org/abs/1905.08705](https://arxiv.org/abs/1905.08705)
+### 1. PointNet.
 
-## Intentions.
+Reference: [https://arxiv.org/abs/1612.00593](https://arxiv.org/abs/1612.00593)
 
-The purpose of this repository is to provide a clean implementation of GAPNet. In order to allow comparability, it includes PointNet. The goal is to come up with a readable implementation of GAPNet that outperforms PointNet.
+PointNet is included as a baseline.
+
+### 2. GAPNet.
+
+Reference: [https://arxiv.org/abs/1905.08705](https://arxiv.org/abs/1905.08705)
+
+GAPNet combines the Graph Neural Network approach with attention.
+
+![GAPNet](resources/GAPNet network.png)
 
 ## How to run.
 
