@@ -42,7 +42,7 @@ Reference: [https://arxiv.org/abs/1905.08705](https://arxiv.org/abs/1905.08705)
 
 GAPNet combines the Graph Neural Network approach with attention.
 
-![GAPNet](resources/GAPNet network.png)
+![GAPNet](https://raw.githubusercontent.com/AI-Guru/pointcloud_experiments/master/resources/GAPNet%20network.png)
 
 ## How to run.
 
