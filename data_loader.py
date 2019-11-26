@@ -7,7 +7,7 @@ Author: Tianzhong
 import numpy as np
 import h5py
 import random
-from keras.utils import np_utils
+from tensorflow.keras.utils import to_categorical
 
 
 class DataGenerator:
@@ -85,5 +85,5 @@ class DataGenerator:
                             item = self.jitter_point_cloud(item)
                     X.append(item)
                     Y.append(label[0])
-                Y = np_utils.to_categorical(np.array(Y), self.nb_classes)
+                Y = to_categorical(np.array(Y), self.nb_classes)
                 yield np.array(X), Y
